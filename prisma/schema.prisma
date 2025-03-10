@@ -1,0 +1,215 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  username      String?   @unique
+  image         String?
+  timezone      String?
+  locale        String?
+  bio           String?
+
+  accounts      Account[]
+  sessions      Session[]
+  meetings      Meeting[]      @relation("MeetingHost")
+  attendees     Attendee[]
+  messages      Message[]
+  replies       Reply[]
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model Meeting {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  location    String?
+  hostId      String
+  startTime   DateTime
+  endTime     DateTime?
+  status      String    @default("scheduled")
+
+  host        User         @relation("MeetingHost", fields: [hostId], references: [id], onDelete: Cascade)
+  attendees   Attendee[]
+  messages    Message[]
+  agendaItems Agenda[]
+  notes       Note[]
+  actionItems ActionItem[]
+  decisions   Decision[]
+  invitations Invitation[]
+  topics      Topic[]
+  documents   Document[]
+  settings    Settings?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Attendee {
+  id        String @id @default(cuid())
+  meetingId String
+  userId    String
+  role      String @default("participant")
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model Message {
+  id        String @id @default(cuid())
+  meetingId String
+  userId    String
+  content   String // md
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replies Reply[]
+
+  createdAt DateTime @default(now())
+}
+
+model Reply {
+  id        String @id @default(cuid())
+  messageId String
+  userId    String
+  content   String // md
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model Agenda {
+  id        String @id @default(cuid())
+  meetingId String
+  item      String
+  order     Int
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+model Note {
+  id        String @id @default(cuid())
+  meetingId String
+  content   String // md
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+model ActionItem {
+  id        String @id @default(cuid())
+  meetingId String
+  item      String
+  status    String @default("pending")
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+model Decision {
+  id        String @id @default(cuid())
+  meetingId String
+  content   String // md
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+model Invitation {
+  id        String @id @default(cuid())
+  meetingId String
+  email     String
+  status    String @default("pending")
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+model Topic {
+  id        String @id @default(cuid())
+  meetingId String
+  content   String // md
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+model Document {
+  id        String @id @default(cuid())
+  meetingId String
+  url       String
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+model Settings {
+  id                   String  @id @default(cuid())
+  meetingId            String  @unique
+  isPrivate            Boolean @default(false)
+  recording            Boolean @default(false)
+  notificationsEnabled Boolean @default(true)
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id      String  @id @default(cuid())
+  userId  String
+  type    String
+  message String
+  read    Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
